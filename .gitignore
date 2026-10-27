@@ -6,3 +6,5 @@
 /fuzz/corpus/*/*
 !/fuzz/corpus/*/.gitkeep
 /BOOTSTRAP-ims-core.md
+# kb: agent memory, local only, not tracked in git
+/kb/

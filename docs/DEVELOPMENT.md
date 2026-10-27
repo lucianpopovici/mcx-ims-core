@@ -1,6 +1,6 @@
 # Development
 
-Linux with a C toolchain, `pkg-config` and git. Container work needs podman (or docker) with compose.
+Linux with a C toolchain, `pkg-config` and git. Container work needs podman (or docker) with compose. Reading the 3GPP originals in `docs/3GPP/` needs LibreOffice (`soffice --headless`), as most are legacy `.doc` files.
 
 ## Toolchain (pinned)
 
@@ -12,13 +12,14 @@ Linux with a C toolchain, `pkg-config` and git. Container work needs podman (or 
 | cargo-deny | 0.20.2 |
 | cargo-fuzz | 0.13.2 |
 | cargo-llvm-cov | 0.9.1 (coverage, informational in I1) |
+| cargo-mutants | 27.1.0 (mutation testing of critical code, see `CONTRIBUTING.md`) |
 | actions/checkout | v7.0.1 (`3d3c42e5aac5ba805825da76410c181273ba90b1`) |
 | taiki-e/install-action | v2.87.32 (`5488ac5a951645ce95062214902ac4b6bc1a1037`) |
 
 ```sh
 rustup toolchain install 1.99.1 --profile minimal -c rustfmt -c clippy -c llvm-tools
 rustup toolchain install nightly-2026-10-26 --profile minimal -c llvm-tools
-cargo install --locked cargo-nextest@0.9.150 cargo-deny@0.20.2 cargo-fuzz@0.13.2 cargo-llvm-cov@0.9.1
+cargo install --locked cargo-nextest@0.9.150 cargo-deny@0.20.2 cargo-fuzz@0.13.2 cargo-llvm-cov@0.9.1 cargo-mutants@27.1.0
 ```
 
 ## Gates locally
@@ -39,6 +40,16 @@ Both variables are required; there is no default.
 ```sh
 IMS_RELEASE=17 IMS_ACCESS_BINDING=none cargo run -p hss
 ```
+
+## Mutation testing
+
+Required for critical code (`CONTRIBUTING.md`, Verification), on the code a change touches:
+
+```sh
+cargo mutants --in-diff <(git diff origin/main...) --test-tool nextest
+```
+
+Every non-equivalent mutant must be killed; list the equivalent ones in the pull request with the reason.
 
 ## Fuzzing
 
