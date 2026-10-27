@@ -1,8 +1,8 @@
 # MC SIP/IMS core — Software Requirements Specification
 
 **Document:** IMS-SRS
-**Version:** 0.7 (draft)
-**Date:** 2026-10-26
+**Version:** 0.8 (draft)
+**Date:** 2026-10-27
 **Status:** Draft for review — not baselined
 
 ---
@@ -104,6 +104,8 @@ reason a platform phase cannot exit.
 | TS 33.203 | Access security for IMS (IMS-AKA, sec-agree) |
 | TS 33.210 | Network domain security (IP) |
 | TS 23.003 | Numbering, addressing and identification |
+| TS 32.409 | Telecommunication management; Performance Management (PM); performance measurements for the IMS (exact title to be confirmed from the original) |
+| TS 32.454 | Telecommunication management; Key Performance Indicators (KPI) for the IMS; Definitions |
 
 ### 2.2 IETF
 
@@ -303,9 +305,83 @@ which neither interop reference meets today.
 |---|---|---|---|
 | IMS-OAM-001 | I1 | Every entity shall log its configuration identity (name, version, content hash), release and access binding at start, and expose them on its health endpoint. | T |
 | IMS-OAM-002 | I1 | Registrations, de-registrations, authentication failures, third-party registration outcomes and rejected requests shall be recorded with reason. | T |
-| IMS-OAM-003 | I1 | Logs shall be structured, with a correlation identifier that follows a request across entities (e.g. derived from P-Charging-Vector ICID). | T |
+| IMS-OAM-003 | I1 | Logs shall be structured, with a correlation identifier that follows a request across entities: the ICID, as §14A specifies (IMS-TEL-003). | T |
 | IMS-OAM-004 | I1 | Every entity shall expose liveness and readiness endpoints; readiness is false until configuration is validated and peers are reachable. | T |
-| IMS-OAM-005 | I2 | Metrics: registrations by state, request rates and latency per method and entity, Cx latency, rejections by reason, overload state. | T |
+| IMS-OAM-005 | I2 | Metrics: registrations by state, request rates and latency per method and entity, Cx latency, rejections by reason, overload state; and the TS 32.409 measurements and TS 32.454 KPIs of §14A.4. | T |
+
+---
+
+## 14A. Telemetry and failure location (IMS-TEL)
+
+Every entity, and every role an entity plays, reports what happened to each
+procedure it took part in. From those reports alone it shall be possible to say,
+for a failed call or procedure, **where the failure began**: in which entity, at
+which step, or on which link, as opposed to everywhere it was passed on.
+
+A failure is usually seen in several places. A REGISTER refused because the HSS
+does not know the user is answered 403 by the S-CSCF and relayed by the P-CSCF;
+all three see a failure, and only one is its origin. The requirements below make
+each entity say which of the three cases it is in, so that following the reports
+leads to exactly one origin.
+
+### 14A.1 Correlation
+
+IMS already carries one key across its entities. TS 24.229 §4.5.2: the first IMS
+entity on a transaction generates the IMS charging identifier (ICID) in
+P-Charging-Vector; for a dialog it is generated on the initial request and used
+for every later message of the dialog; the P-CSCF generates one for each
+REGISTER (§5.2.2.1); the S-CSCF sends the same ICID in the third-party REGISTER
+to the application server (§5.4.1.7, for initial registration and user-initiated
+reregistration); and the P-CSCF removes P-Charging-Vector from everything it
+receives from or sends to the UE, so an ICID is never taken from a UE (§5.2.1).
+All five checked in V13.23.0 and V20.1.0; the releases between are to be
+confirmed by the extraction of IMS-OP-07.
+
+| ID | Phase | Requirement | V |
+|---|---|---|---|
+| IMS-TEL-001 | I1 | Every entity shall emit a telemetry record for every procedure instance it takes part in, whether it succeeds or fails, naming the entity, the role it played, its instance, its configuration identity, release and access binding (IMS-OAM-001). An entity playing several roles (a combined test build, IMS-GEN-001) shall emit the records of each role under that role's name. | T |
+| IMS-TEL-002 | I1 | Procedures and their steps shall be a closed, documented vocabulary: at least registration, reregistration, deregistration (UE-, network- and administratively initiated), third-party registration, session establishment, in-dialog request, session release, each Cx command (UAR, MAR, SAR, LIR, RTR, PPR), Diameter peer connection and watchdog, and TLS connection set-up. Every record shall name the procedure and the last step it reached. | I |
+| IMS-TEL-003 | I1 | Every record of a SIP procedure shall carry its ICID. The core shall generate the ICID where TS 24.229 assigns that to it, and where a request reaches the core from inside the trust domain without one, the first entity of this core to handle it shall generate one. An ICID received from outside the trust domain shall not be used (§5.2.1). | T |
+| IMS-TEL-004 | I1 | A record of a Diameter procedure shall carry its Session-Id and, at the CSCF that sent the request, the ICID of the SIP procedure it was made for, so the HSS's records join the SIP procedure without the HSS knowing the ICID. | T |
+| IMS-TEL-005 | I1 | Every record of a request sent to an MC server shall carry its Call-ID and the ICID it carried, so that a procedure can be joined with the platform's own records by Call-ID without any change to the platform (§3.3 constraint 2). | T |
+| IMS-TEL-006 | I1 | A record shall name each peer by its authenticated identity (the DNS name of its TLS certificate, or its Diameter Origin-Host), never by address alone. | T |
+
+### 14A.2 Failure attribution
+
+| ID | Phase | Requirement | V |
+|---|---|---|---|
+| IMS-TEL-010 | I1 | Every record of a procedure that did not succeed shall state exactly one origin: **local** (this entity refused or failed it, with a reason code from a closed vocabulary that tells a policy refusal from a fault, and the step where it happened); **peer** (a named peer answered with a failure, with what it answered: SIP status and Warning, or Diameter Result-Code or Experimental-Result); **no-response** (a named peer did not answer, with the timer that expired); or **transport** (the connection to a named peer failed, with the TLS or transport error). | T |
+| IMS-TEL-011 | I1 | When an entity passes a failure on, its record shall state both what it received and what it sent, so a translation (a Diameter result mapped to a SIP status, a status changed on the way) is visible where it happened. | T |
+| IMS-TEL-012 | I1 | From the records of one procedure, the origin of a failure shall be determined mechanically: by following each **peer** origin to that peer's record, until a record states **local**, **no-response** or **transport**. Where the chain leads to a peer that emits no records (a third-party peer, the platform, a UE), the origin shall be reported as that peer, named. | T |
+| IMS-TEL-013 | I1 | This repository shall provide a tool that, given telemetry and a key (an ICID, a Call-ID, a Diameter Session-Id, or a user identity and a time window), lists the records of the procedure in causal order and names the origin of its failure as IMS-TEL-012 defines it. | T |
+| IMS-TEL-014 | I1 | Attribution shall not depend on comparing clocks between entities. The order of records is taken from what they reference (peer, transaction, ICID, Session-Id), and timestamps (UTC, milliseconds) only order the records of one entity. | A |
+
+### 14A.3 Telemetry must not harm the service
+
+| ID | Phase | Requirement | V |
+|---|---|---|---|
+| IMS-TEL-020 | I1 | Emitting telemetry shall never block, delay or fail a procedure. Records wait in a bounded buffer; when it is full or the destination is unavailable, records are dropped, not waited for. | T |
+| IMS-TEL-021 | I1 | Every dropped record shall be counted, and the count reported as a gap record (when, how many, of which procedures) as soon as records can be sent again, and on the health endpoint meanwhile. A missing record shall be distinguishable from a procedure that did not happen. | T |
+| IMS-TEL-022 | I1 | Records shall carry no credential, authentication vector, key or message body (IMS-SEC-004). Subscriber identities shall be recorded as IMS-OP-11 decides. | I |
+| IMS-TEL-023 | I1 | Telemetry sent off the host shall be sent over TLS with the destination authenticated. Its format and transport are as IMS-OP-10 decides. | T |
+
+### 14A.4 Performance measurements and KPIs
+
+TS 32.409 defines the standard performance measurements of the IMS functional
+entities, and TS 32.454 the IMS key performance indicators built from them. Using
+them means this core reports what an operator's management system already
+expects, in the same terms as any other IMS. **Neither specification has been
+read for this document**: until their originals are in `docs/3GPP/`, the
+requirements below name no measurement and no KPI, and none is to be written
+from memory.
+
+| ID | Phase | Requirement | V |
+|---|---|---|---|
+| IMS-TEL-030 | I2 | Each entity shall produce the performance measurements TS 32.409 defines for its function (P-CSCF, S-CSCF and HSS; I-CSCF and IBCF in I3), with the names, triggers and sub-counters the specification gives, read from its original for the configured release. | T |
+| IMS-TEL-031 | I2 | Measurements shall be derived from the telemetry records of §14A.1 and §14A.2, not counted separately, so that a counter and the records of the procedures it counts cannot disagree. Each measurement's trigger shall be written as a procedure, step and outcome of IMS-TEL-002 and IMS-TEL-010; a trigger the records cannot express is a gap in the records, to be fixed there. | I |
+| IMS-TEL-032 | I2 | The TS 32.454 KPIs that apply to the functions this core provides shall be computable from those measurements, each with its formula cited to its clause. KPIs that need data from outside the core (the UE, the access network, the MC servers) shall be listed with what they need, not approximated. | T |
+| IMS-TEL-033 | I2 | A measurement or KPI that the specification version in use does not define shall not be produced. Which version is in use for each configured release is as IMS-OP-12 decides, and shall be reported at startup and in every measurement report. | T |
+| IMS-TEL-034 | I2 | The measurement granularity period shall be a required deployment setting with no default. | T |
 
 ---
 
@@ -319,6 +395,7 @@ which neither interop reference meets today.
 | IMS-VER-004 | I1 | Each entity shall be exercised against a third-party peer over its reference point (IMS-GEN-002, IMS-HSS-003). | D |
 | IMS-VER-005 | I1 | The trust-domain requirements of §6 shall each have a negative test: a forged, a missing and an unauthorised identity are each refused. | T |
 | IMS-VER-006 | I2 | Each requirement shall trace to at least one verification artefact. | I |
+| IMS-VER-007 | I1 | For each class of failure, a test shall cause it at each entity and on each link where it can occur, and shall show that the tool of IMS-TEL-013 names that entity and step, or that link, as the origin, and nothing else. The classes include at least: user unknown to the HSS; authentication failure; HSS unreachable; Diameter watchdog failure; TLS handshake failure; no iFC match; identity policing refusal at the P-CSCF; an MC server refusing a third-party REGISTER or an INVITE; a UE that does not answer; and telemetry lost in the middle of a procedure (IMS-TEL-021). | T |
 
 ---
 
@@ -334,6 +411,9 @@ which neither interop reference meets today.
 | IMS-OP-06 | Whether an in-house replacement for Asterisk's role is needed at all, and as what: an IBCF (§11), an interworking gateway for platform R4, or none. | I3 planning |
 | IMS-OP-07 | **Decided 2026-10-26: the platform's release set, Rel-13 to Rel-20, selected per deployment.** The core adopts the platform's release model: one release at start with no default (IMS-GEN-005), release numbers in exactly one module (as PLT-REL-008), and a well-formed construct the release does not define reported apart from malformed input (as PLT-REL-006). The core does not read or check the platform's release (§3.3); running both at the same release is a deployment rule. CI runs the interop matrix at matched releases, every release from 13 to 20; a mismatched pair is permitted but untested, and stated as such. An access binding the release cannot carry refuses startup, as `MCX_STRICT_RELEASE` does for call types: provisionally, `5gc` (N5) from Rel-15 and Nhss_ims from Rel-16. **These boundaries, and every other first-release boundary the core relies on, shall be extracted from the TS 24.229, 29.229, 29.514 and 29.562 originals in each release, not taken from this table** (the PLT-CONF-AUDIT lesson: an interpolated boundary is a guess with a citation attached). | closed |
 | IMS-OP-08 | **CSCF decided 2026-10-26: Kamailio,** with its IMS modules (P-CSCF, S-CSCF, I-CSCF, Cx through its Diameter peer module). This is a second Kamailio configuration, separate from the plain record-routing proxy that VP1-SIG-001 uses today, and both are kept. **HSS decided 2026-10-26: PyHSS** (Kamailio provides none). It implements Cx and Sh and has been run with Kamailio's S-CSCF, so it is also the third-party Sh peer when IMS-HSS-008 arrives. The test pairs for IMS-GEN-002 and IMS-HSS-003 are therefore: our CSCFs with PyHSS, and Kamailio's CSCFs with our HSS. | closed |
+| IMS-OP-10 | Telemetry format and transport (IMS-TEL-023). (a) OpenTelemetry, OTLP: procedures as spans, a standard collector and viewers (Jaeger, Tempo), at the cost of new external libraries (`opentelemetry`, `tracing-opentelemetry`); (b) structured JSON lines, collected by whatever the deployment uses (journald, Vector, Fluent Bit), read by this repository's tool, with no new library; (c) JSON lines now, an OTLP exporter added when a deployment needs one. **Recommended: (c).** The record schema is this project's either way and maps one to one onto spans, so (c) loses nothing later and adds no dependency now. | I1 start |
+| IMS-OP-11 | Subscriber identities in telemetry (IMS-TEL-022). Telemetry is personal data: it says who registered, from where, when. (a) In clear; (b) pseudonymised with a keyed hash under a per-deployment key, so that whoever holds the key can search for a user (the tool hashes the identity given) but a reader of the telemetry cannot see who it is; (c) a required deployment setting choosing (a) or (b), with no default, the choice reported at startup. **Recommended: (c).** Troubleshooting needs to find one user's failures, which (b) still allows; retention and access are for the deployment to set. | I1 start |
+| IMS-OP-12 | Which version of TS 32.409 and TS 32.454 applies at each configured release. These are SA5 specifications, versioned per release but not always issued for every one: as of 2026-10-27 the 3GPP portal lists TS 32.454 up to Rel-19 (V19.0.0) and none for Rel-20. (a) The latest version not later than the configured release; (b) refuse to produce measurements when no version matches. **Recommended: (a)**, with the version used reported (IMS-TEL-033). The same question will arise for any other SA5 specification. Also to settle with IMS-OP-10: how measurements are delivered (the 3GPP PM file and streaming formats, or the same channel as the records). | I2 start |
 | IMS-OP-09 | **Roadmap decision 2026-10-26: Sh later.** The platform reading the HSS over Sh (TS 29.328/29.329) is planned for a later phase, provisionally I3 with platform R3; until then IMS-OP-05's generated snapshot is how HSS data reaches the platform. Sh reopens the platform's SIP-OP-05 for that phase, and three things must be settled before it is built: (1) a directory answer that changes without redeployment is outside the network identifier (ICD-NET-002), so the audit record must name what Sh returned and its version (e.g. the repository data sequence number); (2) whether Sh replaces the snapshot or checks it; (3) behaviour when the HSS is unreachable, which must fail closed. §3.3 constraint 2 still holds: Sh is a standard interface any HSS may offer. | I3 planning |
 
 ---
@@ -342,6 +422,7 @@ which neither interop reference meets today.
 
 | Version | Date | Change |
 |---|---|---|
+| 0.8 | 2026-10-27 | §14A added (IMS-TEL, 20 requirements): every entity and role emits a record per procedure, correlated by ICID (TS 24.229 §4.5.2, §5.2.1, §5.2.2.1, §5.4.1.7, checked in V13.23.0 and V20.1.0), Diameter Session-Id and Call-ID; each failure states one origin, and a tool names where a failure began; telemetry never harms the service, and loss is counted. IMS-VER-007 added. IMS-OAM-003 points to IMS-TEL-003. IMS-OP-10 (format) and IMS-OP-11 (identities) opened. §14A.4 (IMS-TEL-030 to 034): TS 32.409 measurements and TS 32.454 KPIs, derived from the records; TS 32.409 and TS 32.454 added to §2.1; IMS-OAM-005 points to them; IMS-OP-12 opened (which version per release, and delivery). |
 | 0.7 | 2026-10-26 | IMS-OP-08 closed: PyHSS as the third-party HSS; test pairs stated. |
 | 0.6 | 2026-10-26 | IMS-OP-08: Kamailio (IMS modules) as the third-party CSCF; HSS still open, PyHSS proposed. IMS-OP-09 opened: Sh on the roadmap (provisionally I3), with what it must settle. IMS-HSS-008 (Sh) added. Sh added to §3.1. |
 | 0.5 | 2026-10-26 | IMS-OP-07 closed: the platform's release set (Rel-13 to 20) and release model; matched-release interop matrix; access bindings gated by release. |

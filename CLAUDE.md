@@ -48,6 +48,11 @@ are not written yet.
    in `crates/release`.
 4. **Profile-agnostic.** The core does not know whether the MC system above it is
    an MCX or an FRMCS deployment (IMS-SRS §3.3).
+5. **Every failure says where it began.** Each entity and role emits a record for
+   every procedure it takes part in, and a failed one names its origin: here,
+   a named peer, a peer that did not answer, or a broken link (IMS-SRS §14A).
+   Someone reading only the telemetry must be able to point at the entity and
+   step, or the link, where a failed call or registration went wrong.
 
 These are enforced by gates (`tools/gates/`). **If a gate blocks you, it is
 probably right.** Fix the code. If you believe the gate is wrong, stop and say

@@ -34,6 +34,7 @@ See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) to run them locally.
 - **Lints.** `unsafe_code` is forbidden; no `unwrap`, `expect`, `panic!`, indexing or unchecked arithmetic in production code. Tests may opt out of `unwrap_used`, `expect_used` and `indexing_slicing` only.
 - **Untrusted input.** Every parser bounds message size, element count and nesting, and rejects rather than truncates (IMS-SEC-002). Numbers from a peer accept ASCII digits only. Peer text is clipped where it enters an error, a log line or an audit record.
 - **Protocol state machines** are enums matched exhaustively: no `_` arm over states or events, so a new state or event is a compile error wherever it is not handled.
+- **Telemetry.** Every procedure ends in a telemetry record, and every path that ends a procedure without success states its origin: local, peer, no-response or transport (IMS-SRS §14A). A new failure path comes with a test showing its record and origin. Emitting telemetry never blocks or fails a procedure.
 - **No secrets in logs.** Credentials, authentication vectors, keys and message bodies are never logged by default (IMS-SEC-004).
 - **Deviations.** Any departure from a specification is recorded in `docs/`, with its reason; when it is a setting, it is also reported at startup.
 - **Protocol values cite their source**: specification, version and clause, read from the original in `docs/3GPP/`.
