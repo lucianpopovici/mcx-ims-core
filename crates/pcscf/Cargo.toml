@@ -1,0 +1,18 @@
+[package]
+name = "pcscf"
+description = "pcscf binary (bootstrap stub: validates configuration, logs a start record, exits)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+build = "build.rs"
+
+[dependencies]
+config.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[lints]
+workspace = true

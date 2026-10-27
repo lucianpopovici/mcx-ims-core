@@ -29,7 +29,7 @@ print_stdout = "deny"
 [workspace.dependencies]
 thiserror = "2"
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", default-features = false, features = ["std", "fmt", "json", "time"] }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["std", "fmt", "json"] }
 release = { path = "crates/release" }
 binding = { path = "crates/binding" }
 config = { path = "crates/config" }
