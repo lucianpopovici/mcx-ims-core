@@ -1,0 +1,29 @@
+[package]
+name = "ims-core-fuzz"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+sip = { path = "../crates/sip" }
+diameter = { path = "../crates/diameter" }
+
+[workspace]
+
+[[bin]]
+name = "sip_parse"
+path = "fuzz_targets/sip_parse.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "diameter_decode"
+path = "fuzz_targets/diameter_decode.rs"
+test = false
+doc = false
+bench = false

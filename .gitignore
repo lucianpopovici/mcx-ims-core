@@ -3,3 +3,5 @@
 /fuzz/artifacts
 /fuzz/coverage
 *.profraw
+/fuzz/corpus/*/*
+!/fuzz/corpus/*/.gitkeep
