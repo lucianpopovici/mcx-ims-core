@@ -180,7 +180,7 @@ mod tests {
         assert_eq!(
             c,
             Ok(Config {
-                release: Release::Rel17,
+                release: Release::parse("17").unwrap(),
                 binding: AccessBinding::None
             })
         );

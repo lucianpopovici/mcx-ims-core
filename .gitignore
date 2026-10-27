@@ -5,3 +5,4 @@
 *.profraw
 /fuzz/corpus/*/*
 !/fuzz/corpus/*/.gitkeep
+/BOOTSTRAP-ims-core.md
