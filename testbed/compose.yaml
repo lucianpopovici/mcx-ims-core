@@ -1,0 +1,41 @@
+# I1 test bed: PyHSS (+ Redis) as the third-party HSS (IMS-OP-08).
+# Kamailio IMS is a documented next task (see README.md).
+# Build the PyHSS image first: testbed/pyhss/build.sh
+name: mcx-ims-core-testbed
+
+services:
+  redis:
+    image: docker.io/library/redis:7.0.15-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    networks: [testbed]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  pyhss_hss:
+    image: localhost/mcx-ims-core-pyhss:953dc480a349
+    environment:
+      CONTAINER_ROLE: hss
+      REDIS_HOST: redis
+      DATABASE_TYPE: sqlite
+      DATABASE_NAME: /var/lib/pyhss/hss.db
+      HSS_ORIGIN_REALM: ims.mnc001.mcc001.3gppnetwork.org
+    networks: [testbed]
+    volumes:
+      - pyhss_sqlite:/var/lib/pyhss
+    depends_on:
+      redis:
+        condition: service_healthy
+
+networks:
+  testbed:
+    driver: bridge
+    internal: true
+
+volumes:
+  redis_data:
+  pyhss_sqlite:

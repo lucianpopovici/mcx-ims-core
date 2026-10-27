@@ -53,3 +53,10 @@ cargo fuzz run diameter_decode -- -max_total_time=60
 ## Test bed
 
 See [testbed/README.md](../testbed/README.md).
+
+## Test-bed images (pinned)
+
+| What | Pin |
+|---|---|
+| Redis | `docker.io/library/redis:7.0.15-alpine` |
+| PyHSS | built from `nickvsnetworking/pyhss` commit `953dc480a3497753c1c0a618a0c0f932df82526f`, tagged `localhost/mcx-ims-core-pyhss:953dc480a349` |
