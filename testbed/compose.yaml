@@ -5,7 +5,7 @@ name: mcx-ims-core-testbed
 
 services:
   redis:
-    image: docker.io/library/redis:7.0.15-alpine
+    image: docker.io/library/redis:7.0.15-alpine@sha256:0a34d7c44fe60c6ba273c0cddc26d1571a5ccd69280623a66b70393231a9eed9
     command: ["redis-server", "--appendonly", "yes"]
     networks: [testbed]
     volumes:

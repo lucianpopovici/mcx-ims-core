@@ -10,7 +10,7 @@ Third-party peers for the I1 interop tests (IMS-OP-08): Kamailio with its IMS mo
 | PyHSS (`hss` role) | defined; image built from upstream commit `953dc480a3497753c1c0a618a0c0f932df82526f` (nickvsnetworking/pyhss, 2026-10-22) by `pyhss/build.sh` |
 | Kamailio IMS (P-, S-, I-CSCF) | **next task**, not part of the bootstrap |
 
-Not yet verified: the image build and the compose start have not been run.
+Verified 2026-10-27: Redis reports healthy and PyHSS (`hss` role) starts and initialises its database and Diameter library.
 
 ## Bring up
 
