@@ -13,6 +13,8 @@ Every push and pull request runs these jobs; all are required (`.github/workflow
 | independence | `tools/gates/selftest.sh independence`, then `tools/gates/independence.sh` |
 | release-literals | `tools/gates/selftest.sh release_literals`, then `tools/gates/release_literals.sh` |
 | no-defaults | `tools/gates/selftest.sh no_defaults`, then `tools/gates/no_defaults.sh` |
+| one-implementation | `tools/gates/selftest.sh one_implementation`, then `tools/gates/one_implementation.sh` |
+| entity-deps | `tools/gates/selftest.sh entity_deps`, then `tools/gates/entity_deps.sh` (python3 ≥ 3.11) |
 | fuzz-smoke | every fuzz target for 60 s on the pinned nightly |
 | exit-codes | the bin integration tests |
 

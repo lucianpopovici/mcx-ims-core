@@ -30,7 +30,8 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo nextest run --workspace && cargo test --workspace --doc
 cargo deny check
 tools/gates/selftest.sh all
-tools/gates/independence.sh && tools/gates/release_literals.sh && tools/gates/no_defaults.sh
+tools/gates/independence.sh && tools/gates/release_literals.sh && tools/gates/no_defaults.sh \
+  && tools/gates/one_implementation.sh && tools/gates/entity_deps.sh
 ```
 
 ## Running a bin

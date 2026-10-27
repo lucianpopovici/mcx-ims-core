@@ -36,7 +36,9 @@ are not written yet.
    use those crates and never parse, build or re-check wire format themselves. A
    gap is fixed in the crate, never worked around in an entity. The platform
    learned why: three layers each reading an identity their own way were three
-   ways in (PLT-VP-R1 RES-OP-01).
+   ways in (PLT-VP-R1 RES-OP-01). `entity_deps` checks that nothing depends on
+   an entity; `one_implementation` looks for wire text outside its protocol
+   crate, and is a heuristic: passing it is not proof.
 2. **A separate product.** No code, path or git dependency shared with
    `mcx-platform`, in either direction, even for tests (IMS-GEN-003). Nothing here
    may depend on the platform being the MC server above it, and the platform must
@@ -61,7 +63,8 @@ cargo clippy --workspace --all-targets -- -D warnings
 cargo nextest run --workspace && cargo test --workspace --doc
 cargo deny check
 tools/gates/selftest.sh all        # every gate fails on its planted violations
-tools/gates/independence.sh && tools/gates/release_literals.sh && tools/gates/no_defaults.sh
+tools/gates/independence.sh && tools/gates/release_literals.sh && tools/gates/no_defaults.sh \
+  && tools/gates/one_implementation.sh && tools/gates/entity_deps.sh
 # run an entity: both variables are required, neither has a default
 IMS_RELEASE=17 IMS_ACCESS_BINDING=none cargo run -p scscf
 # fuzzing (fuzz/ has its own pinned nightly and is not a workspace member)

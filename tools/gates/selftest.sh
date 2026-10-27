@@ -1,7 +1,7 @@
 #!/bin/sh
 # Self-test for the gates: each gate must pass on a clean copy of the
 # repository and must fail on a copy with a planted violation.
-# Usage: selftest.sh [independence|release_literals|no_defaults|all]
+# Usage: selftest.sh [independence|release_literals|no_defaults|one_implementation|entity_deps|all]
 set -u
 here=$(cd "$(dirname "$0")" && pwd)
 repo=$(cd "$here/../.." && pwd)
@@ -36,6 +36,19 @@ expect_fail() {
     fi
 }
 
+# expect_pass_with GATE DESCRIPTION FILE TEXT: TEXT is allowed there; the gate must still pass
+expect_pass_with() {
+    fresh
+    mkdir -p "$(dirname "$tmp/copy/$3")"
+    printf '%s\n' "$4" >>"$tmp/copy/$3"
+    if "$here/$1.sh" "$tmp/copy" >/dev/null 2>&1; then
+        echo "selftest: $1 correctly passed: $2"
+    else
+        echo "selftest: $1 wrongly failed on allowed text: $2" >&2
+        fail=1
+    fi
+}
+
 t_independence() {
     expect_pass independence
     expect_fail independence "absolute path dependency" crates/sip/Cargo.toml 'evil = { path = "/opt/evil" }'
@@ -60,13 +73,41 @@ t_no_defaults() {
 pub enum AccessBinding { A }'
     expect_fail no_defaults "unwrap_or on IMS_RELEASE" crates/config/src/lib.rs 'fn g() { let _ = std::env::var("IMS_RELEASE").unwrap_or_default(); }'
 }
+t_one_implementation() {
+    expect_pass one_implementation
+    expect_fail one_implementation "SIP status line in an entity" crates/pcscf/src/main.rs 'const L: &str = "SIP/2.0 200 OK";'
+    expect_fail one_implementation "SIP method compared in an entity" crates/scscf/src/main.rs 'fn m(s: &str) -> bool { s == "REGISTER" }'
+    expect_fail one_implementation "IMS header name in an entity" crates/pcscf/src/main.rs 'const H: &str = "p-asserted-identity";'
+    expect_fail one_implementation "header line in a support crate" crates/config/src/lib.rs 'const H: &str = "Via: SIP/2.0/TLS";'
+    expect_fail one_implementation "SDP in the HSS" crates/hss/src/main.rs 'const S: &str = "v=0\r\n";'
+    expect_fail one_implementation "3GPP Vendor-Id in an entity" crates/scscf/src/main.rs 'const V: u32 = 10_415;'
+    expect_fail one_implementation "Cx Application-Id in the SIP crate" crates/sip/src/lib.rs 'const CX: u32 = 16777216;'
+    expect_fail one_implementation "SIP in the Diameter crate" crates/diameter/src/lib.rs 'const M: &str = "INVITE";'
+    expect_pass_with one_implementation "SIP in the SIP crate" crates/sip/src/lib.rs 'const L: &str = "SIP/2.0"; const M: &str = "INVITE"; const H: &str = "Via:";'
+    expect_pass_with one_implementation "Cx Application-Id in the Diameter crate" crates/diameter/src/lib.rs 'const CX: u32 = 16_777_216; const V: u32 = 10415;'
+    expect_pass_with one_implementation "SIP test data under tests/" crates/pcscf/tests/wire.rs 'const R: &str = "REGISTER sip:ims.example SIP/2.0";'
+}
+t_entity_deps() {
+    expect_pass entity_deps
+    expect_fail entity_deps "entity depends on an entity" crates/scscf/Cargo.toml '[build-dependencies]
+pcscf = { path = "../pcscf" }'
+    expect_fail entity_deps "library dev-depends on an entity" crates/sip/Cargo.toml "[target.'cfg(unix)'.dev-dependencies]
+hss = { path = \"../hss\" }"
+    expect_fail entity_deps "entity in workspace.dependencies" Cargo.toml '[workspace.dependencies.pcscf]
+path = "crates/pcscf"'
+    expect_fail entity_deps "unreadable manifest" crates/hss/Cargo.toml 'this is not toml ='
+    expect_pass_with entity_deps "entity depends on a library" crates/hss/Cargo.toml '[build-dependencies]
+release = { path = "../release" }'
+}
 
 case "${1:-all}" in
     independence) t_independence ;;
     release_literals) t_release_literals ;;
     no_defaults) t_no_defaults ;;
-    all) t_independence; t_release_literals; t_no_defaults ;;
-    *) echo "usage: selftest.sh [independence|release_literals|no_defaults|all]" >&2; exit 2 ;;
+    one_implementation) t_one_implementation ;;
+    entity_deps) t_entity_deps ;;
+    all) t_independence; t_release_literals; t_no_defaults; t_one_implementation; t_entity_deps ;;
+    *) echo "usage: selftest.sh [independence|release_literals|no_defaults|one_implementation|entity_deps|all]" >&2; exit 2 ;;
 esac
 [ "$fail" -eq 0 ] && echo "selftest: ok"
 exit "$fail"
