@@ -28,7 +28,7 @@ for f in $files; do
     awk -v file="$f" '
         /^[[:space:]]*#\[derive\(/ { if ($0 ~ /Default/) pend = 1; next }
         /^[[:space:]]*(#\[|\/\/)/ { next }
-        /(enum|struct)[[:space:]]+(Release|AccessBinding)\>/ && pend { print file ":" NR ": derive(Default) on " $0; bad = 1 }
+        /(enum|struct)[[:space:]]+(Release|AccessBinding)([^[:alnum:]_]|$)/ && pend { print file ":" NR ": derive(Default) on " $0; bad = 1 }
         { pend = 0 }
         END { exit bad }
     ' "$f" >&2 || fail=1
