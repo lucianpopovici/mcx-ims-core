@@ -58,5 +58,5 @@ See [testbed/README.md](../testbed/README.md).
 
 | What | Pin |
 |---|---|
-| Redis | `docker.io/library/redis:7.0.15-alpine` |
+| Redis | `docker.io/library/redis:7.0.15-alpine@sha256:0a34d7c44fe60c6ba273c0cddc26d1571a5ccd69280623a66b70393231a9eed9` |
 | PyHSS | built from `nickvsnetworking/pyhss` commit `953dc480a3497753c1c0a618a0c0f932df82526f`, tagged `localhost/mcx-ims-core-pyhss:953dc480a349` |
