@@ -1,9 +1,12 @@
 #!/bin/sh
 # Gate: independence from mcx-platform (IMS-GEN-003).
 # Fails if any Cargo.toml has a path dependency leaving the repository or any
-# git dependency, if Cargo.lock has a git source, or if any file other than
-# README.md, docs/, CONTRIBUTING.md, tools/gates/ and the local, untracked
-# BOOTSTRAP-ims-core.md mentions mcx-platform.
+# git dependency, if Cargo.lock has a git source, or if any file mentions
+# mcx-platform other than these, each at the repository root only: README.md,
+# CONTRIBUTING.md, CLAUDE.md, docs/, tools/gates/, and the local, untracked
+# BOOTSTRAP-ims-core.md and kb/ (agent memory, git-ignored).
+# Exemptions are paths from the root, never bare names: a crates/x/README.md or
+# crates/x/docs/ that mentions mcx-platform fails.
 # Known misses: dependencies written as multi-line tables with the path on a
 # line that does not contain `path =`; non-text files are not scanned.
 # Usage: independence.sh [ROOT]
@@ -38,9 +41,9 @@ for l in $(find "$root" -name target -prune -o -name .git -prune -o -name Cargo.
     fi
 done
 
-hits=$(grep -rIl 'mcx-platform' "$root" \
-    --exclude-dir=.git --exclude-dir=target --exclude-dir=docs --exclude-dir=gates \
-    --exclude=README.md --exclude=CONTRIBUTING.md --exclude=BOOTSTRAP-ims-core.md 2>/dev/null)
+hits=$(cd "$root" && grep -rIl 'mcx-platform' . --exclude-dir=.git --exclude-dir=target 2>/dev/null |
+    sed 's|^\./||' |
+    grep -vE '^(README\.md|CONTRIBUTING\.md|CLAUDE\.md|BOOTSTRAP-ims-core\.md|docs/.*|tools/gates/.*|kb/.*)$')
 if [ -n "$hits" ]; then
     echo "independence: mcx-platform referenced in:" >&2
     echo "$hits" >&2

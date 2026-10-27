@@ -26,6 +26,7 @@ expect_pass() {
 # expect_fail GATE DESCRIPTION FILE TEXT: append TEXT to FILE in a fresh copy
 expect_fail() {
     fresh
+    mkdir -p "$(dirname "$tmp/copy/$3")"
     printf '%s\n' "$4" >>"$tmp/copy/$3"
     if "$here/$1.sh" "$tmp/copy" >/dev/null 2>&1; then
         echo "selftest: $1 did NOT fail on planted violation: $2" >&2
@@ -41,6 +42,9 @@ t_independence() {
     expect_fail independence "path leaving the repository" crates/sip/Cargo.toml 'evil = { path = "../../../evil" }'
     expect_fail independence "git dependency" crates/sip/Cargo.toml 'evil = { git = "https://example.invalid/evil" }'
     expect_fail independence "mcx-platform reference in source" crates/sip/src/lib.rs '// see mcx-platform'
+    expect_fail independence "mcx-platform in a nested README" crates/sip/README.md 'see mcx-platform'
+    expect_fail independence "mcx-platform in a nested docs/" crates/sip/docs/notes.md 'see mcx-platform'
+    expect_fail independence "mcx-platform in a nested CLAUDE.md" crates/sip/CLAUDE.md 'see mcx-platform'
 }
 t_release_literals() {
     expect_pass release_literals
